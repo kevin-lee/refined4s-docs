@@ -1,4 +1,4 @@
-# refined4s
+# 📖 refined4s docs
 
 [![Build Status](https://github.com/kevin-lee/refined4s/workflows/Build-All/badge.svg)](https://github.com/kevin-lee/refined4s/actions?workflow=Build-All)
 [![Release Status](https://github.com/kevin-lee/refined4s/workflows/Release/badge.svg)](https://github.com/kevin-lee/refined4s/actions?workflow=Release)
@@ -10,11 +10,12 @@
 [![Hits](https://hits.sh/github.com/kevin-lee/refined4s.svg)](https://hits.sh/github.com/kevin-lee/refined4s/)
 [![codecov](https://codecov.io/gh/kevin-lee/refined4s/graph/badge.svg?token=eRXmN9YMzk)](https://codecov.io/gh/kevin-lee/refined4s)
 
-![Refined4s Logo](https://refined4s.kevinly.dev/img/refined4s-400x400.png)
+## Project Repository: [https://github.com/kevin-lee/refined4s](https://github.com/kevin-lee/refined4s)
+## Docs: [https://refined4s.kevinly.dev](https://refined4s.kevinly.dev)
+
+[![Refined4s Logo](https://refined4s.kevinly.dev/img/refined4s-400x400.png)](https://refined4s.kevinly.dev)
 
 Newtypes and Refinement types for Scala 3
-
-## Check out the doc site: [https://refined4s.kevinly.dev](https://refined4s.kevinly.dev)
 
 |                 Project | Maven Central                                                                                          | JVM | Scala.js | Scala Native |
 |------------------------:|--------------------------------------------------------------------------------------------------------|-----|----------|--------------|
@@ -33,19 +34,3 @@ Newtypes and Refinement types for Scala 3
 
 Refined4s also supports Scala.js and Scala Native.
 
-
-***
-
-## Test Coverage
-
-### Test Coverage Sunburst
-
-[![Test Coverage Sunburst](https://codecov.io/gh/kevin-lee/refined4s/graphs/sunburst.svg?token=eRXmN9YMzk)](https://app.codecov.io/gh/kevin-lee/refined4s)
-
-### Test Coverage Grid
-
-[![Test Coverage Grid](https://codecov.io/gh/kevin-lee/refined4s/graphs/tree.svg?token=eRXmN9YMzk)](https://app.codecov.io/gh/kevin-lee/refined4s)
-
-### Test Coverage Icicle
-
-[![Test Coverage Icicle](https://codecov.io/gh/kevin-lee/refined4s/graphs/icicle.svg?token=eRXmN9YMzk)](https://app.codecov.io/gh/kevin-lee/refined4s)
