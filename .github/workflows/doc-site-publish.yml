@@ -42,6 +42,45 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-${{ matrix.node.version }}
 
+      - name: Create gh-pages if missing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "gh-pages already exists; skipping."
+          else
+            echo ">> gh-pages does not exist. Creating..."
+          
+            current_branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+            echo "current_branch: $current_branch"
+
+            echo ">> Setting up git user"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+  
+            echo ">> git brach"
+            git branch
+  
+            echo ">> Running: `git checkout --orphan gh-pages`"
+            git checkout --orphan gh-pages
+
+            echo ">> Running: rm -rf ."
+            git rm -rf .
+
+            echo '>> Running: git commit --allow-empty -m "Add gh-pages branch"'
+            git commit --allow-empty -m "Add gh-pages branch"
+
+            echo ">> Running: gh auth setup-git"
+            gh auth setup-git
+          
+            echo ">> Running: git push origin gh-pages"
+            git push origin gh-pages
+          
+            echo ">> Switching back to $current_branch"
+            git switch "$current_branch"
+          fi
+
+
       - name: Build and publish website
         env:
           ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
