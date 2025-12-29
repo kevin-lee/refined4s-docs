@@ -39,7 +39,7 @@ ThisBuild / scalafixConfig := (
 
 lazy val root = (project in file("."))
   .settings(
-    name := props.RepoName,
+    name := props.RepoName
   )
   .settings(noPublish)
 
@@ -136,8 +136,8 @@ lazy val CmdRun = new {
   import sys.process._
 
   def runAndCapture(command: Seq[String]): (Int, String, String) = {
-    val out = new StringBuilder
-    val err = new StringBuilder
+    val out      = new StringBuilder
+    val err      = new StringBuilder
     val exitCode =
       Process(command).!(
         ProcessLogger(
@@ -181,8 +181,8 @@ def getTheLatestTaggedVersion(logger: => String => Unit): String = {
       ghAuthErr,
     )(logger)
 
-  val repo = "kevin-lee/refined4s"
-  val tagNameCmd =
+  val repo                      = "kevin-lee/refined4s"
+  val tagNameCmd                =
     Seq("gh", "release", "view", "-R", repo, "--json", "tagName", "-q", ".tagName")
   val (tagExit, tagOut, tagErr) = CmdRun.runAndCapture(tagNameCmd)
   if (tagExit != 0)
@@ -244,7 +244,7 @@ def writeVersionsArchived(websiteDir: File, latestVersion: String)(implicit logg
       ghAuthErr,
     )(logger.error(_))
 
-  val repo = "kevin-lee/refined4s"
+  val repo      = "kevin-lee/refined4s"
   val ghTagsCmd =
     Seq(
       "gh",
