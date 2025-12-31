@@ -1,13 +1,3 @@
-addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.11.2")
-
-addSbtPlugin("org.wartremover" % "sbt-wartremover" % "3.4.0")
-
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.3")
-
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.5")
-
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.2.2")
-
 addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.7.2")
 
 addSbtPlugin("io.kevinlee" % "sbt-docusaur" % "0.20.0")
