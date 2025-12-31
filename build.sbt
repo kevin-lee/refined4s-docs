@@ -1,13 +1,9 @@
 import just.semver.SemVer
-import sbtcrossproject.CrossProject
 import extras.scala.io.syntax.color._
 
 ThisBuild / scalaVersion := props.ProjectScalaVersion
 ThisBuild / organization := props.Org
 ThisBuild / organizationName := "Kevin's Code"
-
-ThisBuild / testFrameworks ~=
-  (frameworks => (TestFramework("hedgehog.sbt.Framework") +: frameworks).distinct)
 
 ThisBuild / developers := List(
   Developer(
@@ -18,24 +14,7 @@ ThisBuild / developers := List(
   )
 )
 
-ThisBuild / homepage := Some(url(s"https://github.com/${props.GitHubUsername}/${props.RepoName}"))
-ThisBuild / scmInfo :=
-  Some(
-    ScmInfo(
-      url(s"https://github.com/${props.GitHubUsername}/${props.RepoName}"),
-      s"git@github.com:${props.GitHubUsername}/${props.RepoName}.git",
-    )
-  )
 ThisBuild / licenses := props.licenses
-
-ThisBuild / scalafixDependencies += "com.github.xuwei-k" %% "scalafix-rules" % "0.6.11"
-
-ThisBuild / scalafixConfig := (
-  if (scalaVersion.value.startsWith("3"))
-    ((ThisBuild / baseDirectory).value / ".scalafix-scala3.conf").some
-  else
-    ((ThisBuild / baseDirectory).value / ".scalafix-scala2.conf").some
-)
 
 lazy val root = (project in file("."))
   .settings(
@@ -54,7 +33,7 @@ lazy val docs = (project in file("docs-gen-tmp/docs"))
     scalacOptions ~= (ops => ops.filter(op => !op.startsWith("-Wunused:imports") && op != "-Wnonunit-statement")),
     libraryDependencies ++= {
 
-      val latestVersion = getTheLatestTaggedVersion(println)
+      val latestVersion = docsTools.getTheLatestTaggedVersion(println)
 
       List(
         "io.kevinlee" %%% "refined4s-core"          % latestVersion,
@@ -73,15 +52,15 @@ lazy val docs = (project in file("docs-gen-tmp/docs"))
     mdocVariables := {
       implicit val logger: Logger = sLog.value
 
-      val latestVersion = getTheLatestTaggedVersion(logger.error(_))
-      createMdocVariables(latestVersion)
+      val latestVersion = docsTools.getTheLatestTaggedVersion(logger.error(_))
+      docsTools.createMdocVariables(latestVersion)
     },
     docusaurDir := (ThisBuild / baseDirectory).value / "website",
     docusaurBuildDir := docusaurDir.value / "build",
     mdoc := {
       implicit val logger: Logger = sLog.value
 
-      val latestVersion = getTheLatestTaggedVersion(logger.error(_))
+      val latestVersion = docsTools.getTheLatestTaggedVersion(logger.error(_))
 
       val envVarCi = sys.env.get("CI")
       val ciResult = s"""sys.env.get("CI")=${envVarCi}"""
@@ -91,8 +70,8 @@ lazy val docs = (project in file("docs-gen-tmp/docs"))
             s">> ${ciResult.yellow} so ${"run".green} `${"writeLatestVersion".blue}` and `${"writeVersionsArchived".blue}`."
           )
           val websiteDir = docusaurDir.value
-          writeLatestVersion(websiteDir, latestVersion)
-          writeVersionsArchived(websiteDir, latestVersion)(logger)
+          docsTools.writeLatestVersion(websiteDir, latestVersion)
+          docsTools.writeVersionsArchived(websiteDir, latestVersion)(logger)
         case Some(_) | None =>
           logger.info(
             s">> ${ciResult.yellow} so it will ${"not run".red} `${"writeLatestVersion".cyan}` and `${"writeVersionsArchived".cyan}`."
@@ -128,174 +107,180 @@ lazy val docsV0 = (project in file("docs-gen-tmp/docs-v0"))
         libs.circeParser.value,
       )
     },
-    mdocVariables := createMdocVariables("0.19.0"),
+    mdocVariables := docsTools.createMdocVariables("0.19.0"),
   )
   .settings(noPublish)
 
-lazy val CmdRun = new {
-  import sys.process._
+lazy val docsTools = new {
 
-  def runAndCapture(command: Seq[String]): (Int, String, String) = {
-    val out      = new StringBuilder
-    val err      = new StringBuilder
-    val exitCode =
-      Process(command).!(
-        ProcessLogger(
-          (o: String) => out.append(o).append('\n'),
-          (e: String) => err.append(e).append('\n'),
+  lazy val CmdRun = new {
+
+    import sys.process._
+
+    def runAndCapture(command: Seq[String]): (Int, String, String) = {
+      val out      = new StringBuilder
+      val err      = new StringBuilder
+      val exitCode =
+        Process(command).!(
+          ProcessLogger(
+            (o: String) => out.append(o).append('\n'),
+            (e: String) => err.append(e).append('\n'),
+          )
         )
-      )
-    (exitCode, out.result().trim, err.result().trim)
-  }
-
-  def fail(prefix: String, step: String, command: Seq[String], out: String, err: String)(log: String => Unit): Nothing = {
-    val cmdString = command.mkString(" ")
-    val details   =
-      if (err.nonEmpty) err
-      else if (out.nonEmpty) out
-      else "(no output)"
-    log(s">> [$prefix][$step] Command failed: `$cmdString`\n$details".red)
-    throw new MessageOnlyException(s"$step failed: $cmdString\n$details")
-  }
-}
-
-def getTheLatestTaggedVersion(logger: => String => Unit): String = {
-  val (ghVersionExit, ghVersionOut, ghVersionErr) = CmdRun.runAndCapture(Seq("gh", "--version"))
-  if (ghVersionExit != 0)
-    CmdRun.fail(
-      "getTheLatestTaggedVersion",
-      "gh --version",
-      Seq("gh", "--version"),
-      ghVersionOut,
-      ghVersionErr,
-    )(logger)
-
-  val (ghAuthExit, ghAuthOut, ghAuthErr) =
-    CmdRun.runAndCapture(Seq("gh", "auth", "status", "-h", "github.com"))
-  if (ghAuthExit != 0)
-    CmdRun.fail(
-      "getTheLatestTaggedVersion",
-      "gh auth status",
-      Seq("gh", "auth", "status", "-h", "github.com"),
-      ghAuthOut,
-      ghAuthErr,
-    )(logger)
-
-  val repo                      = "kevin-lee/refined4s"
-  val tagNameCmd                =
-    Seq("gh", "release", "view", "-R", repo, "--json", "tagName", "-q", ".tagName")
-  val (tagExit, tagOut, tagErr) = CmdRun.runAndCapture(tagNameCmd)
-  if (tagExit != 0)
-    CmdRun.fail("getTheLatestTaggedVersion", "gh release view", tagNameCmd, tagOut, tagErr)(logger)
-
-  val tagName = tagOut.trim
-  if (tagName.isEmpty)
-    CmdRun.fail(
-      "getTheLatestTaggedVersion",
-      "gh release view (empty tagName)",
-      tagNameCmd,
-      tagOut,
-      tagErr,
-    )(logger)
-
-  if (!tagName.startsWith("v")) {
-    logger(s">> [getTheLatestTaggedVersion] Expected tagName to start with 'v' but got: $tagName".red)
-    throw new MessageOnlyException(s"Expected tagName to start with 'v' but got: $tagName")
-  }
-
-  val versionWithoutV = tagName.stripPrefix("v")
-  SemVer.parse(versionWithoutV) match {
-    case Right(v) => v.render
-    case Left(parseError) =>
-      logger(s">> [getTheLatestTaggedVersion] Invalid SemVer from tagName ($tagName): ${parseError.toString}".red)
-      throw new MessageOnlyException(s"Invalid SemVer from tagName ($tagName): ${parseError.toString}")
-  }
-}
-
-def writeLatestVersion(websiteDir: File, latestVersion: String)(implicit logger: Logger): Unit = {
-  val latestVersionFile = websiteDir / "latestVersion.json"
-  val latestVersionJson = raw"""{"version":"$latestVersion"}"""
-
-  val websiteDirRelativePath =
-    s"${latestVersionFile.getParentFile.getParentFile.getName.cyan}/${latestVersionFile.getParentFile.getName.yellow}"
-  logger.info(
-    s""">> Writing ${"the latest version".blue} to $websiteDirRelativePath/${latestVersionFile.getName.green}.
-       |>> Content: ${latestVersionJson.blue}
-       |""".stripMargin
-  )
-  IO.write(latestVersionFile, latestVersionJson)
-}
-
-def writeVersionsArchived(websiteDir: File, latestVersion: String)(implicit logger: Logger): Unit = {
-  import sys.process._
-
-  val (ghVersionExit, ghVersionOut, ghVersionErr) = CmdRun.runAndCapture(Seq("gh", "--version"))
-  if (ghVersionExit != 0)
-    CmdRun.fail("writeVersionsArchived", "gh --version", Seq("gh", "--version"), ghVersionOut, ghVersionErr)(logger.error(_))
-
-  val (ghAuthExit, ghAuthOut, ghAuthErr) =
-    CmdRun.runAndCapture(Seq("gh", "auth", "status", "-h", "github.com"))
-  if (ghAuthExit != 0)
-    CmdRun.fail(
-      "writeVersionsArchived",
-      "gh auth status",
-      Seq("gh", "auth", "status", "-h", "github.com"),
-      ghAuthOut,
-      ghAuthErr,
-    )(logger.error(_))
-
-  val repo      = "kevin-lee/refined4s"
-  val ghTagsCmd =
-    Seq(
-      "gh",
-      "api",
-      "-H",
-      "Accept: application/vnd.github+json",
-      s"/repos/$repo/tags",
-      "--paginate",
-      "-q",
-      ".[].name",
-    )
-
-  val (tagsExit, tagsOut, tagsErr) = CmdRun.runAndCapture(ghTagsCmd)
-  if (tagsExit != 0)
-    CmdRun.fail("writeVersionsArchived", "gh api tags", ghTagsCmd, tagsOut, tagsErr)(logger.error(_))
-
-  val tags = tagsOut.trim
-  if (tags.isEmpty)
-    CmdRun.fail("writeVersionsArchived", "gh api tags (empty)", ghTagsCmd, tagsOut, tagsErr)(logger.error(_))
-
-  val versions = tags
-    .split("\n")
-    .map(_.trim)
-    .filter(t => t.nonEmpty && t.startsWith("v"))
-    .map(_.stripPrefix("v"))
-    .map(SemVer.parse)
-    .collect { case Right(v) => v }
-    .sorted(Ordering[SemVer].reverse)
-    .map(_.render)
-    .filter(_ != latestVersion)
-
-  val versionsArchivedFile = websiteDir / "src" / "pages" / "versionsArchived.json"
-
-  val versionsInJson = versions
-    .map { v =>
-      raw"""  {
-           |    "name": "$v",
-           |    "label": "$v"
-           |  }""".stripMargin
+      (exitCode, out.result().trim, err.result().trim)
     }
-    .mkString("[\n", ",\n", "\n]")
 
-  IO.write(versionsArchivedFile, versionsInJson)
-}
+    def fail(prefix: String, step: String, command: Seq[String], out: String, err: String)(log: String => Unit): Nothing = {
+      val cmdString = command.mkString(" ")
+      val details   =
+        if (err.nonEmpty) err
+        else if (out.nonEmpty) out
+        else "(no output)"
+      log(s">> [$prefix][$step] Command failed: `$cmdString`\n$details".red)
+      throw new MessageOnlyException(s"$step failed: $cmdString\n$details")
+    }
+  }
 
-def createMdocVariables(version: String): Map[String, String] = {
-  val versionForDoc = version
+  def getTheLatestTaggedVersion(logger: => String => Unit): String = {
+    val (ghVersionExit, ghVersionOut, ghVersionErr) = CmdRun.runAndCapture(Seq("gh", "--version"))
+    if (ghVersionExit != 0)
+      CmdRun.fail(
+        "getTheLatestTaggedVersion",
+        "gh --version",
+        Seq("gh", "--version"),
+        ghVersionOut,
+        ghVersionErr,
+      )(logger)
 
-  Map(
-    "VERSION" -> versionForDoc
-  )
+    val (ghAuthExit, ghAuthOut, ghAuthErr) =
+      CmdRun.runAndCapture(Seq("gh", "auth", "status", "-h", "github.com"))
+    if (ghAuthExit != 0)
+      CmdRun.fail(
+        "getTheLatestTaggedVersion",
+        "gh auth status",
+        Seq("gh", "auth", "status", "-h", "github.com"),
+        ghAuthOut,
+        ghAuthErr,
+      )(logger)
+
+    val repo = s"${props.GitHubUsername}/${props.CodeRepoName}"
+
+    val tagNameCmd =
+      Seq("gh", "release", "view", "-R", repo, "--json", "tagName", "-q", ".tagName")
+
+    val (tagExit, tagOut, tagErr) = CmdRun.runAndCapture(tagNameCmd)
+    if (tagExit != 0)
+      CmdRun.fail("getTheLatestTaggedVersion", "gh release view", tagNameCmd, tagOut, tagErr)(logger)
+
+    val tagName = tagOut.trim
+    if (tagName.isEmpty)
+      CmdRun.fail(
+        "getTheLatestTaggedVersion",
+        "gh release view (empty tagName)",
+        tagNameCmd,
+        tagOut,
+        tagErr,
+      )(logger)
+
+    if (!tagName.startsWith("v")) {
+      logger(s">> [getTheLatestTaggedVersion] Expected tagName to start with 'v' but got: $tagName".red)
+      throw new MessageOnlyException(s"Expected tagName to start with 'v' but got: $tagName")
+    }
+
+    val versionWithoutV = tagName.stripPrefix("v")
+    SemVer.parse(versionWithoutV) match {
+      case Right(v) => v.render
+      case Left(parseError) =>
+        logger(s">> [getTheLatestTaggedVersion] Invalid SemVer from tagName ($tagName): ${parseError.toString}".red)
+        throw new MessageOnlyException(s"Invalid SemVer from tagName ($tagName): ${parseError.toString}")
+    }
+  }
+
+  def writeLatestVersion(websiteDir: File, latestVersion: String)(implicit logger: Logger): Unit = {
+    val latestVersionFile = websiteDir / "latestVersion.json"
+    val latestVersionJson = raw"""{"version":"$latestVersion"}"""
+
+    val websiteDirRelativePath =
+      s"${latestVersionFile.getParentFile.getParentFile.getName.cyan}/${latestVersionFile.getParentFile.getName.yellow}"
+    logger.info(
+      s""">> Writing ${"the latest version".blue} to $websiteDirRelativePath/${latestVersionFile.getName.green}.
+         |>> Content: ${latestVersionJson.blue}
+         |""".stripMargin
+    )
+    IO.write(latestVersionFile, latestVersionJson)
+  }
+
+  def writeVersionsArchived(websiteDir: File, latestVersion: String)(implicit logger: Logger): Unit = {
+    import sys.process._
+
+    val (ghVersionExit, ghVersionOut, ghVersionErr) = CmdRun.runAndCapture(Seq("gh", "--version"))
+    if (ghVersionExit != 0)
+      CmdRun.fail("writeVersionsArchived", "gh --version", Seq("gh", "--version"), ghVersionOut, ghVersionErr)(logger.error(_))
+
+    val (ghAuthExit, ghAuthOut, ghAuthErr) =
+      CmdRun.runAndCapture(Seq("gh", "auth", "status", "-h", "github.com"))
+    if (ghAuthExit != 0)
+      CmdRun.fail(
+        "writeVersionsArchived",
+        "gh auth status",
+        Seq("gh", "auth", "status", "-h", "github.com"),
+        ghAuthOut,
+        ghAuthErr,
+      )(logger.error(_))
+
+    val repo      = s"${props.GitHubUsername}/${props.CodeRepoName}"
+    val ghTagsCmd =
+      Seq(
+        "gh",
+        "api",
+        "-H",
+        "Accept: application/vnd.github+json",
+        s"/repos/$repo/tags",
+        "--paginate",
+        "-q",
+        ".[].name",
+      )
+
+    val (tagsExit, tagsOut, tagsErr) = CmdRun.runAndCapture(ghTagsCmd)
+    if (tagsExit != 0)
+      CmdRun.fail("writeVersionsArchived", "gh api tags", ghTagsCmd, tagsOut, tagsErr)(logger.error(_))
+
+    val tags = tagsOut.trim
+    if (tags.isEmpty)
+      CmdRun.fail("writeVersionsArchived", "gh api tags (empty)", ghTagsCmd, tagsOut, tagsErr)(logger.error(_))
+
+    val versions = tags
+      .split("\n")
+      .map(_.trim)
+      .filter(t => t.nonEmpty && t.startsWith("v"))
+      .map(_.stripPrefix("v"))
+      .map(SemVer.parse)
+      .collect { case Right(v) => v }
+      .sorted(Ordering[SemVer].reverse)
+      .map(_.render)
+      .filter(_ != latestVersion)
+
+    val versionsArchivedFile = websiteDir / "src" / "pages" / "versionsArchived.json"
+
+    val versionsInJson = versions
+      .map { v =>
+        raw"""  {
+             |    "name": "$v",
+             |    "label": "$v"
+             |  }""".stripMargin
+      }
+      .mkString("[\n", ",\n", "\n]")
+
+    IO.write(versionsArchivedFile, versionsInJson)
+  }
+
+  def createMdocVariables(version: String): Map[String, String] = {
+    val versionForDoc = version
+
+    Map(
+      "VERSION" -> versionForDoc
+    )
+  }
 }
 
 lazy val props =
@@ -307,6 +292,8 @@ lazy val props =
 
     val GitHubUsername = GitHubRepo.fold("kevin-lee")(_.orgToString)
     val RepoName       = GitHubRepo.fold("refined4s-docs")(_.nameToString)
+
+    val CodeRepoName = RepoName.stripSuffix("-docs")
 
     val Scala3Version = "3.3.5"
 
