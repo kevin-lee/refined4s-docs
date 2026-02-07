@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 id: custom-type
 title: "Custom Type"
 ---
@@ -35,7 +35,7 @@ object MyString extends Refined[String] {
 ```
 
 
-## Create Value
+### Create Value
 Given the following `Refined` type,
 ```scala mdoc
 type Month = Month.Type
@@ -48,7 +48,7 @@ object Month extends Refined[Int] {
 }
 ```
 
-### With Compile-time Validation
+#### With Compile-time Validation
 If the actual value is a constant value meaning that the actual value is known in compile-time 
 (e.g. number, Boolean, String literals), `Refined` provides a compile-time validation 
 with its `apply` method.
@@ -72,7 +72,7 @@ Month(13)
 // Invalid value: [13]. It must be Int between 1 and 12 (1 - 12)
 ```
 
-### With Runtime Validation
+#### With Runtime Validation
 
 **Valid cases**
 ```scala mdoc
@@ -94,7 +94,7 @@ Month.from(invalidMonthInput2)
 ```
 
 
-## Get Actual Value
+### Get Actual Value
 
 To get the actual value you can simply use the `value` method.
 
@@ -103,7 +103,7 @@ val month = Month(1)
 month.value
 ```
 
-## Pattern Matching
+### Pattern Matching
 
 For pattern matching, `Refined` has built-in `unapply` so you can simply do
 
