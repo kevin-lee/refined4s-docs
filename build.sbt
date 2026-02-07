@@ -17,7 +17,8 @@ ThisBuild / licenses := props.licenses
 
 lazy val root = (project in file("."))
   .settings(
-    name := props.RepoName
+    name := props.RepoName,
+    scalacOptions := scalacOptions.value.distinct,
   )
   .settings(noPublish)
 
@@ -30,6 +31,7 @@ lazy val docs = (project in file("docs-gen-tmp/docs"))
     mdocOut := file("generated-docs/docs"),
     cleanFiles += ((ThisBuild / baseDirectory).value / "generated-docs" / "docs"),
     scalacOptions ~= (ops => ops.filter(op => !op.startsWith("-Wunused:imports") && op != "-Wnonunit-statement")),
+    scalacOptions := scalacOptions.value.distinct,
     libraryDependencies ++= {
 
       val latestVersion = DocsTools.getTheLatestTaggedVersion(props.GitHubUsername, props.CodeRepoName)(println)
@@ -92,6 +94,7 @@ lazy val docsV0 = (project in file("docs-gen-tmp/docs-v0"))
     mdocOut := file("website/versioned_docs/version-v0/docs"),
     cleanFiles += ((ThisBuild / baseDirectory).value / "website" / "versioned_docs" / "version-v0"),
     scalacOptions ~= (ops => ops.filter(op => !op.startsWith("-Wunused:imports") && op != "-Wnonunit-statement")),
+    scalacOptions := scalacOptions.value.distinct,
     libraryDependencies ++= {
       val theVersion          = "0.19.0"
       List(
