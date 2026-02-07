@@ -17,11 +17,12 @@ import {
   type Version,
 } from '@docusaurus/plugin-content-docs/client';
 
-import { ArchivedVersion, LatestVersion } from '@types/commonTypes';
+import {ArchivedVersion, LatestVersion} from '@types/commonTypes';
 
 import VersionsArchived from './versionsArchived.json';
 
 import LatestVersionImported from '../../latestVersion.json';
+
 const latestVersionFound = LatestVersionImported as LatestVersion;
 
 export default function Version(): React.JSX.Element {
@@ -29,13 +30,21 @@ export default function Version(): React.JSX.Element {
   const {siteConfig} = useDocusaurusContext();
   const versions = useVersions();
   const latestVersion = useLatestVersion();
+
+  // console.log(`versions: ${JSON.stringify(versions)}`);
+
+  const isVersionLessThanOne = (versionName: string): boolean => {
+    const normalizedVersionName = versionName.startsWith('v')
+        ? versionName.substring(1)
+        : versionName;
+    const [major] = normalizedVersionName.split('.');
+    const majorVersion = Number.parseInt(major, 10);
+    // console.log(`versionName: ${versionName}, normalizedVersionName: ${normalizedVersionName}, major: ${major}, majorVersion: ${majorVersion}`);
+    return Number.isFinite(majorVersion) && majorVersion < 1;
+  };
   console.log(`latestVersion: ${JSON.stringify(latestVersion)}`);
-  const currentVersion = versions.find((version) => version.name === 'current');
-  const pastVersions = versions.filter(
-    (version) => version !== latestVersion && version.name !== 'current',
-  )
-  .concat(VersionsArchived as ArchivedVersion[])
-  .sort((a, b) => {
+
+  const defaultVersionSorting = (a: ArchivedVersion, b: ArchivedVersion) => {
     // console.log(`a: ${JSON.stringify(a)}, b: ${JSON.stringify(b)}`);
     if (!a.name.includes(".") || !b.name.includes(".")) {
       if (a.name.includes("v")) {
@@ -90,51 +99,69 @@ export default function Version(): React.JSX.Element {
     } else {
       return 1;
     }
-  });
+  };
+
+  const currentVersion = versions.find((version) => version.name === 'current');
+
+  const pastVersions = versions.filter((version) => (version !== latestVersion && version.name !== 'current'))
+      .concat(VersionsArchived as ArchivedVersion[])
+      .filter((version) => !isVersionLessThanOne(version.name))
+      .sort(defaultVersionSorting);
+
+  const pastEndOfLifeVersions = versions.filter(
+      (version) => (version !== latestVersion && version.name !== 'current'))
+      .concat(VersionsArchived as ArchivedVersion[])
+      .filter((version) => isVersionLessThanOne(version.name))
+      .sort(defaultVersionSorting);
+
   console.log(`pastVersions: ${JSON.stringify(pastVersions)}`);
+  console.log(`pastEndOfLifeVersions: ${JSON.stringify(pastEndOfLifeVersions)}`);
   // const stableVersion = pastVersions.shift();
   const stableVersion = currentVersion;
   const repoUrl = `https://github.com/${siteConfig.organizationName}/${siteConfig.projectName}`;
 
-  const docLink = (path?: string) => path ? <Link to={path}>Documentation</Link> : <span>&nbsp;</span>;
+  const docLink = (path?: string) => path ?
+      <Link to={path}>Documentation</Link> : <span>&nbsp;</span>;
 
   const releaseLink = (version: Version | ArchivedVersion) => version.label !== "v0.x.0" ?
       <a href={`${repoUrl}/releases/tag/v${version.name}`}>Release Notes</a> :
       <a href={`${repoUrl}/releases/tag/v0.19.0`}>Release Notes</a>;
 
-  const spaces = (howMany: number) => <span dangerouslySetInnerHTML={{__html: "&nbsp;".repeat(howMany)}} />;
+  const spaces = (howMany: number) => <span
+      dangerouslySetInnerHTML={{__html: "&nbsp;".repeat(howMany)}}/>;
 
   return (
-    <Layout
-      title="Versions"
-      description="Refined4s Versions page listing all documented site versions">
-      <main className="container margin-vert--lg">
-        <h1>Refined4s documentation versions</h1>
+      <Layout
+          title="Versions"
+          description="Refined4s Versions page listing all documented site versions">
+        <main className="container margin-vert--lg">
+          <h1>Refined4s documentation versions</h1>
 
-        {stableVersion && (
-          <div className="margin-bottom--lg">
-            <h3 id="next">Current version (Stable)</h3>
-            <p>
-              Here you can find the documentation for current released version.
-            </p>
-            <table>
-              <tbody>
-              <tr>
-                <th>{latestVersionFound.version}</th>
-                <td>
-                  <Link to={stableVersion.path}>Documentation</Link>
-                </td>
-                <td>
-                  <a href={`${repoUrl}/releases/tag/v${latestVersionFound.version}`}>
-                    Release Notes
-                  </a>
-                </td>
-              </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
-        {/*
+          {stableVersion && (
+              <div className="margin-bottom--lg">
+                <h3 id="next">Current version (Stable)</h3>
+                <p>
+                  Here you can find the documentation for current released
+                  version.
+                </p>
+                <table>
+                  <tbody>
+                  <tr>
+                    <th>{latestVersionFound.version}</th>
+                    <td>
+                      <Link to={stableVersion.path}>Documentation</Link>
+                    </td>
+                    <td>
+                      <a href={`${repoUrl}/releases/tag/v${latestVersionFound.version}`}>
+                        Release Notes
+                      </a>
+                    </td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+          )}
+          {/*
         <div className="margin-bottom--lg">
           <h3 id="latest">Next version (Unreleased)</h3>
           <p>
@@ -154,33 +181,57 @@ export default function Version(): React.JSX.Element {
         </div>
         */}
 
-        {pastVersions.length > 0 && (
-          <div className="margin-bottom--lg">
-            <h3 id="archive">Past versions (Not maintained anymore)</h3>
-            <p>
-              Here you can find documentation for previous versions of
-              Refined4s.
-            </p>
-            <table>
-              <tbody>
-              {pastVersions.map((version) => (
-                <tr key={version.name}>
-                  <th>{version.label}</th>
-                  <td>
-                    {docLink(version.path)}
-                  </td>
-                  <td>
-                    {releaseLink(version)}
-                  </td>
-                </tr>
-              ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+          {pastVersions.length > 0 && (
+              <div className="margin-bottom--lg">
+                <h3 id="archive">Past versions</h3>
+                <p>
+                  Here you can find the previous versions of Refined4s.
+                </p>
+                <table>
+                  <tbody>
+                  {pastVersions.map((version) => (
+                      <tr key={version.name}>
+                        <th>{version.label}</th>
+                        <td>
+                          {docLink(version.path)}
+                        </td>
+                        <td>
+                          {releaseLink(version)}
+                        </td>
+                      </tr>
+                  ))}
+                  </tbody>
+                </table>
+              </div>
+          )}
 
-      </main>
-    </Layout>
+          {pastEndOfLifeVersions.length > 0 && (
+              <div className="margin-bottom--lg">
+                <h3 id="archive">Past versions (Not maintained anymore)</h3>
+                <p>
+                  Here you can find documentation for previous versions of
+                  Refined4s that are no longer maintained.
+                </p>
+                <table>
+                  <tbody>
+                  {pastEndOfLifeVersions.map((version) => (
+                      <tr key={version.name}>
+                        <th>{version.label}</th>
+                        <td>
+                          {docLink(version.path)}
+                        </td>
+                        <td>
+                          {releaseLink(version)}
+                        </td>
+                      </tr>
+                  ))}
+                  </tbody>
+                </table>
+              </div>
+          )}
+
+        </main>
+      </Layout>
   );
 }
 
