@@ -13,6 +13,8 @@ import refined4s.types.all.*
 
 ## Refined `Uri`
 
+`Uri` is a refined `String` type that accepts only valid URI values.
+
 ### Compile-time Validation
 ```scala mdoc
 Uri("https://www.google.com")
@@ -58,6 +60,8 @@ uriB.toURI
 
 
 ## Refined `Url`
+
+`Url` is a refined `String` type that accepts only valid URL values with supported protocols.
 
 ### Compile-time Validation
 ```scala mdoc
@@ -106,6 +110,8 @@ urlB.toURI
 
 
 ## Refined `PortNumber`
+
+`PortNumber` is a refined `Int` type for valid TCP/UDP port numbers in the range `0` to `65535`.
 
 ### Compile-time Validation
 ```scala mdoc
@@ -156,6 +162,8 @@ portNumberB.value
 
 ## Refined `SystemPortNumber`
 
+`SystemPortNumber` is a refined `Int` type for system ports in the range `0` to `1023`.
+
 ### Compile-time Validation
 ```scala mdoc
 SystemPortNumber(0)
@@ -204,6 +212,8 @@ systemPortNumberB.value
 
 
 ## Refined `NonSystemPortNumber`
+
+`NonSystemPortNumber` is a refined `Int` type for non-system ports in the range `1024` to `65535`.
 
 ### Compile-time Validation
 ```scala mdoc
@@ -254,6 +264,8 @@ nonSystemPortNumberB.value
 
 ## Refined `UserPortNumber`
 
+`UserPortNumber` is a refined `Int` type for user (registered) ports in the range `1024` to `49151`.
+
 ### Compile-time Validation
 ```scala mdoc
 UserPortNumber(1024)
@@ -303,6 +315,8 @@ userPortNumberB.value
 
 ## Refined `DynamicPortNumber`
 
+`DynamicPortNumber` is a refined `Int` type for dynamic/private ports in the range `49152` to `65535`.
+
 ### Compile-time Validation
 ```scala mdoc
 DynamicPortNumber(49152)
@@ -348,4 +362,3 @@ dynamicPortNumberA.value
 
 dynamicPortNumberB.value
 ```
-
