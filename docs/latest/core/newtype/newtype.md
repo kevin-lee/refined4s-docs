@@ -4,52 +4,63 @@ id: newtype
 title: "Newtype"
 ---
 
-## `Import`
-```scala mdoc
+## What is `Newtype`?
+
+`Newtype` lets you create domain-specific types from existing value types with zero runtime overhead.
+
+`Newtype` gives you:
+- stronger type-safety at compile-time
+- the same runtime representation as the original type
+- clear domain boundaries without wrappers or allocations
+
+`Newtype` does **not** perform validation.
+If you need validation rules, use `Refined` or `InlinedRefined`.
+
+## Import
+
+```scala mdoc:reset-object
 import refined4s.*
 ```
 
-## Define Newtype
+## Define a `Newtype`
 
 ```scala
 type NewtypeName = NewtypeName.Type
 object NewtypeName extends Newtype[ActualType]
 ```
 
-e.g.)
+Example:
+
 ```scala mdoc
 type Name = Name.Type
 object Name extends Newtype[String]
 ```
 
-## Create Value
+## Create Values
 
 ```scala
 val newtypeName = NewtypeName(value)
 ```
 
-e.g.)
 ```scala mdoc
 val name = Name("Kevin")
 ```
 
-
 ## Get Actual Value
 
-To get the actual value you can simply use the `value` method.
+Use `.value` to unwrap the underlying value.
 
 ```scala
 newtypeName.value
 ```
 
-e.g.)
 ```scala mdoc
 name.value
 ```
 
 ## Pattern Matching
 
-For pattern matching, `Newtype` has built-in `unapply` so you can simply do
+`Newtype` provides `unapply`, so you can pattern match directly.
 
 ```scala mdoc
 name match {
@@ -58,8 +69,8 @@ name match {
 }
 ```
 
+## Type-Safety Example
 
-## Example
 ```scala mdoc:reset-object
 import refined4s.*
 
@@ -74,20 +85,33 @@ def hello(name: Name): Unit = println(s"Hello ${name.value}")
 def send(email: Email): Unit = println(s"Sending email to ${email.value}")
 
 val name = Name("Kevin")
-// Name.Type = "Kevin"
-name.value
-
 hello(name)
 
 val email = Email("kevin@blah.blah")
-// Email.Type = "kevin@blah.blah"
-email.value
-
 send(email)
 ```
+
 ```scala mdoc:fail
 hello("Kevin")
 ```
+
 ```scala mdoc:fail
 send("kevin@blah.blah")
+```
+
+## Functional Typeclass Derivation
+
+`Newtype` can derive typeclass instances from its underlying type using `deriving`.
+
+e.g.) Sorting the `Name` from the example above fails because `Name` does not have an `Ordering` instance.
+```scala mdoc:fail
+List(Name("c"), Name("a"), Name("b")).sorted
+```
+
+You can easily derive an `Ordering` instance for `Name` using `deriving`. So `Ordering[Name]` is derived from `Ordering[String]`.
+
+```scala mdoc
+given Ordering[Name] = Name.deriving[Ordering]
+
+List(Name("c"), Name("a"), Name("b")).sorted
 ```
