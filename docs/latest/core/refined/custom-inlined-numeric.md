@@ -1,8 +1,33 @@
 ---
-sidebar_position: 3
+sidebar_position: 2
 id: custom-inlined-numeric
 title: "Custom Inlined Numeric"
 ---
+
+`InlinedNumeric*` traits are helpers for creating custom numeric refined types with less boilerplate.
+
+They are good when your domain rule is a numeric bound and you want:
+- inline compile-time validation for literals
+- runtime validation with `Either[String, X]`
+- reusable, domain-specific numeric types
+
+## Import
+
+```scala mdoc
+import refined4s.types.all.*
+```
+Or
+```scala
+import refined4s.types.numeric.*
+```
+
+## Choose a Trait
+
+| Trait                     | Constraint                      | Use when                                 |
+|---------------------------|---------------------------------|------------------------------------------|
+| `InlinedNumericMinMax[A]` | `minValue <= value <= maxValue` | both lower and upper bounds are required |
+| `InlinedNumericMin[A]`    | `minValue <= value`             | only lower bound is required             |
+| `InlinedNumericMax[A]`    | `value <= maxValue`             | only upper bound is required             |
 
 ## `InlinedNumericMinMax`
 
@@ -15,16 +40,6 @@ It gives you:
 - inline validation support for literals with `apply` (compile-time), plus runtime validation with `from`
 
 Use it when your type is a numeric value constrained to a closed interval.
-
-### Import
-
-```scala mdoc
-import refined4s.types.all.*
-```
-Or
-```scala
-import refined4s.types.numeric.*
-```
 
 ### How to use
 
@@ -46,7 +61,6 @@ object Percent extends InlinedNumericMinMax[Int] {
 :::info NOTE
 the `minValue` and `maxValue` have to be defined as `inline def` so that they can be used at compile-time.
 :::
-
 
 ### Create with Compile-time Validation
 
@@ -77,6 +91,19 @@ val percentInput2 = 120
 
 Percent.from(percentInput1)
 Percent.from(percentInput2)
+```
+
+#### Functional Runtime Handling
+
+```scala mdoc
+def describePercent(input: Int): String =
+  Percent.from(input).fold(
+    error => s"Invalid percent input: $error",
+    percent => s"Validated percent: ${percent.value}"
+  )
+
+describePercent(35)
+describePercent(135)
 ```
 
 #### Runtime Unsafe Validation (`unsafeFrom`)
@@ -145,6 +172,20 @@ val nonNegativeInput2 = -3
 
 NonNegativeCount.from(nonNegativeInput1)
 NonNegativeCount.from(nonNegativeInput2)
+
+```
+
+#### Functional Runtime Handling
+
+```scala mdoc
+def describeNonNegativeCount(input: Int): String =
+  NonNegativeCount.from(input).fold(
+    error => s"Invalid non-negative count input: $error",
+    count => s"Validated count: ${count.value}"
+  )
+
+describeNonNegativeCount(7)
+describeNonNegativeCount(-2)
 ```
 
 #### Runtime Unsafe Validation (`unsafeFrom`)
@@ -213,6 +254,19 @@ val scoreInput2 = 120
 
 ScoreOutOf100.from(scoreInput1)
 ScoreOutOf100.from(scoreInput2)
+```
+
+#### Functional Runtime Handling
+
+```scala mdoc
+def describeScore(input: Int): String =
+  ScoreOutOf100.from(input).fold(
+    error => s"Invalid score input: $error",
+    score => s"Validated score: ${score.value}"
+  )
+
+describeScore(95)
+describeScore(120)
 ```
 
 #### Runtime Unsafe Validation (`unsafeFrom`)
