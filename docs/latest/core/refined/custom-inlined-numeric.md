@@ -16,10 +16,6 @@ They are good when your domain rule is a numeric bound and you want:
 ```scala mdoc
 import refined4s.types.all.*
 ```
-Or
-```scala
-import refined4s.types.numeric.*
-```
 
 ## Choose a Trait
 
