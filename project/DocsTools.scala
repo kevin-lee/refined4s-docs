@@ -35,60 +35,75 @@ object DocsTools {
     }
   }
 
-  def getTheLatestTaggedVersion(gitHubUsername: String, codeRepoName: String)(logger: => String => Unit): String = {
-    val (ghVersionExit, ghVersionOut, ghVersionErr) = CmdRun.runAndCapture(Seq("gh", "--version"))
-    if (ghVersionExit != 0)
-      CmdRun.fail(
-        "getTheLatestTaggedVersion",
-        "gh --version",
-        Seq("gh", "--version"),
-        ghVersionOut,
-        ghVersionErr,
-      )(logger)
+  def getTheLatestTaggedVersion(gitHubUsername: String, codeRepoName: String)(logger: => String => Unit): String =
+    if (!sys.env.get("CI").flatMap(ci => scala.util.Try(ci.toBoolean).toOption).getOrElse(false)) {
+      import sys.process.*
+      val tag = "git rev-list --tags --max-count=1".!!.trim
 
-    val (ghAuthExit, ghAuthOut, ghAuthErr) =
-      CmdRun.runAndCapture(Seq("gh", "auth", "status", "-h", "github.com"))
-    if (ghAuthExit != 0)
-      CmdRun.fail(
-        "getTheLatestTaggedVersion",
-        "gh auth status",
-        Seq("gh", "auth", "status", "-h", "github.com"),
-        ghAuthOut,
-        ghAuthErr,
-      )(logger)
+      val latestTagedVersion =
+        if (tag.isEmpty)
+          "0.1.0-SNAPSHOT"
+        else
+          s"git describe --tags $tag".!!.trim.stripPrefix("v")
 
-    val repo = s"$gitHubUsername/$codeRepoName"
+      println(s">> It's not CI so just getting the latest tagged version=$latestTagedVersion")
+      println(s">> If you want to get the actual latest version locally, set ENV var `CI`. e.g.) `export CI=true` then run sbt, Or `CI=true sbt`")
 
-    val tagNameCmd =
-      Seq("gh", "release", "view", "-R", repo, "--json", "tagName", "-q", ".tagName")
+      latestTagedVersion
+    } else {
+      val (ghVersionExit, ghVersionOut, ghVersionErr) = CmdRun.runAndCapture(Seq("gh", "--version"))
+      if (ghVersionExit != 0)
+        CmdRun.fail(
+          "getTheLatestTaggedVersion",
+          "gh --version",
+          Seq("gh", "--version"),
+          ghVersionOut,
+          ghVersionErr,
+        )(logger)
 
-    val (tagExit, tagOut, tagErr) = CmdRun.runAndCapture(tagNameCmd)
-    if (tagExit != 0)
-      CmdRun.fail("getTheLatestTaggedVersion", "gh release view", tagNameCmd, tagOut, tagErr)(logger)
+      val (ghAuthExit, ghAuthOut, ghAuthErr) =
+        CmdRun.runAndCapture(Seq("gh", "auth", "status", "-h", "github.com"))
+      if (ghAuthExit != 0)
+        CmdRun.fail(
+          "getTheLatestTaggedVersion",
+          "gh auth status",
+          Seq("gh", "auth", "status", "-h", "github.com"),
+          ghAuthOut,
+          ghAuthErr,
+        )(logger)
 
-    val tagName = tagOut.trim
-    if (tagName.isEmpty)
-      CmdRun.fail(
-        "getTheLatestTaggedVersion",
-        "gh release view (empty tagName)",
-        tagNameCmd,
-        tagOut,
-        tagErr,
-      )(logger)
+      val repo = s"$gitHubUsername/$codeRepoName"
 
-    if (!tagName.startsWith("v")) {
-      logger(s">> [getTheLatestTaggedVersion] Expected tagName to start with 'v' but got: $tagName".red)
-      throw new MessageOnlyException(s"Expected tagName to start with 'v' but got: $tagName")
+      val tagNameCmd =
+        Seq("gh", "release", "view", "-R", repo, "--json", "tagName", "-q", ".tagName")
+
+      val (tagExit, tagOut, tagErr) = CmdRun.runAndCapture(tagNameCmd)
+      if (tagExit != 0)
+        CmdRun.fail("getTheLatestTaggedVersion", "gh release view", tagNameCmd, tagOut, tagErr)(logger)
+
+      val tagName = tagOut.trim
+      if (tagName.isEmpty)
+        CmdRun.fail(
+          "getTheLatestTaggedVersion",
+          "gh release view (empty tagName)",
+          tagNameCmd,
+          tagOut,
+          tagErr,
+        )(logger)
+
+      if (!tagName.startsWith("v")) {
+        logger(s">> [getTheLatestTaggedVersion] Expected tagName to start with 'v' but got: $tagName".red)
+        throw new MessageOnlyException(s"Expected tagName to start with 'v' but got: $tagName")
+      }
+
+      val versionWithoutV = tagName.stripPrefix("v")
+      SemVer.parse(versionWithoutV) match {
+        case Right(v) => v.render
+        case Left(parseError) =>
+          logger(s">> [getTheLatestTaggedVersion] Invalid SemVer from tagName ($tagName): ${parseError.toString}".red)
+          throw new MessageOnlyException(s"Invalid SemVer from tagName ($tagName): ${parseError.toString}")
+      }
     }
-
-    val versionWithoutV = tagName.stripPrefix("v")
-    SemVer.parse(versionWithoutV) match {
-      case Right(v) => v.render
-      case Left(parseError) =>
-        logger(s">> [getTheLatestTaggedVersion] Invalid SemVer from tagName ($tagName): ${parseError.toString}".red)
-        throw new MessageOnlyException(s"Invalid SemVer from tagName ($tagName): ${parseError.toString}")
-    }
-  }
 
   def writeLatestVersion(websiteDir: File, latestVersion: String)(implicit logger: Logger): Unit = {
     val latestVersionFile = websiteDir / "latestVersion.json"
@@ -104,7 +119,9 @@ object DocsTools {
     IO.write(latestVersionFile, latestVersionJson)
   }
 
-  def writeVersionsArchived(gitHubUsername: String, codeRepoName: String)(websiteDir: File, latestVersion: String)(implicit logger: Logger): Unit = {
+  def writeVersionsArchived(gitHubUsername: String, codeRepoName: String)(websiteDir: File, latestVersion: String)(
+    implicit logger: Logger
+  ): Unit = {
 
     val (ghVersionExit, ghVersionOut, ghVersionErr) = CmdRun.runAndCapture(Seq("gh", "--version"))
     if (ghVersionExit != 0)
