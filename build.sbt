@@ -42,7 +42,7 @@ lazy val docs = (project in file("docs-gen-tmp/docs"))
         "io.kevinlee" %% "refined4s-chimney"       % latestVersion,
         "io.kevinlee" %% "refined4s-circe"         % latestVersion,
         "io.kevinlee" %% "refined4s-pureconfig"    % latestVersion,
-        "io.kevinlee" %% "refined4s-doobie-ce2" % latestVersion,
+        "io.kevinlee" %% "refined4s-doobie-ce2"    % latestVersion,
         "io.kevinlee" %% "refined4s-extras-render" % latestVersion,
         "io.kevinlee" %% "refined4s-tapir"         % latestVersion,
         libs.circeCore,
@@ -65,15 +65,15 @@ lazy val docs = (project in file("docs-gen-tmp/docs"))
 
       val envVarCi = sys.env.get("CI")
       val ciResult = s"""sys.env.get("CI")=${envVarCi}"""
-      envVarCi match {
-        case Some("true") =>
+      envVarCi.flatMap(ci => scala.util.Try(ci.toBoolean).toOption) match {
+        case Some(true) =>
           logger.info(
             s">> ${ciResult.yellow} so ${"run".green} `${"writeLatestVersion".blue}` and `${"writeVersionsArchived".blue}`."
           )
           val websiteDir = docusaurDir.value
           DocsTools.writeLatestVersion(websiteDir, latestVersion)
           DocsTools.writeVersionsArchived(props.GitHubUsername, props.CodeRepoName)(websiteDir, latestVersion)(logger)
-        case Some(_) | None =>
+        case Some(false) | None =>
           logger.info(
             s">> ${ciResult.yellow} so it will ${"not run".red} `${"writeLatestVersion".cyan}` and `${"writeVersionsArchived".cyan}`.\n" +
               s">> If you want to write these files locally, run sbt with ${"CI=true".yellow}.\n" +
@@ -103,7 +103,7 @@ lazy val docsV0 = (project in file("docs-gen-tmp/docs-v0"))
         "io.kevinlee" %% "refined4s-chimney"       % theVersion,
         "io.kevinlee" %% "refined4s-circe"         % theVersion,
         "io.kevinlee" %% "refined4s-pureconfig"    % theVersion,
-        "io.kevinlee" %% "refined4s-doobie-ce2" % theVersion,
+        "io.kevinlee" %% "refined4s-doobie-ce2"    % theVersion,
         "io.kevinlee" %% "refined4s-extras-render" % theVersion,
         "io.kevinlee" %% "refined4s-tapir"         % theVersion,
         libs.circeCore,
@@ -182,18 +182,18 @@ lazy val libs = new {
 
   lazy val orphanCats = "io.kevinlee" %% "orphan-cats" % props.OrphanVersion
 
-  lazy val extrasCore           = "io.kevinlee" %% "extras-core" % props.ExtrasVersion
-  lazy val extrasHedgehogCirce  = "io.kevinlee" %% "extras-hedgehog-circe" % props.ExtrasVersion
+  lazy val extrasCore           = "io.kevinlee" %% "extras-core"             % props.ExtrasVersion
+  lazy val extrasHedgehogCirce  = "io.kevinlee" %% "extras-hedgehog-circe"   % props.ExtrasVersion
   lazy val extrasDoobieToolsCe2 = "io.kevinlee" %% "extras-doobie-tools-ce2" % props.ExtrasVersion
   lazy val extrasDoobieToolsCe3 = "io.kevinlee" %% "extras-doobie-tools-ce3" % props.ExtrasVersion
-  lazy val extrasRender         = "io.kevinlee" %% "extras-render" % props.ExtrasVersion
+  lazy val extrasRender         = "io.kevinlee" %% "extras-render"           % props.ExtrasVersion
 
   lazy val cats = "org.typelevel" %% "cats-core" % props.CatsVersion
 
   lazy val kittens = "org.typelevel" %% "kittens" % props.KittensVersion
 
-  lazy val circeCore    = "io.circe" %% "circe-core" % props.CirceVersion
-  lazy val circeParser  = "io.circe" %% "circe-parser" % props.CirceVersion
+  lazy val circeCore    = "io.circe" %% "circe-core"    % props.CirceVersion
+  lazy val circeParser  = "io.circe" %% "circe-parser"  % props.CirceVersion
   lazy val circeLiteral = "io.circe" %% "circe-literal" % props.CirceVersion
 
   lazy val pureconfigCore    = "com.github.pureconfig" %% "pureconfig-core"    % props.PureconfigVersion
@@ -204,8 +204,8 @@ lazy val libs = new {
 
   lazy val embeddedPostgres = "io.zonky.test" % "embedded-postgres" % props.EmbeddedPostgresVersion
 
-  lazy val effectieCore   = "io.kevinlee" %% "effectie-core" % props.EffectieVersion
-  lazy val effectieSyntax = "io.kevinlee" %% "effectie-syntax" % props.EffectieVersion
+  lazy val effectieCore   = "io.kevinlee" %% "effectie-core"         % props.EffectieVersion
+  lazy val effectieSyntax = "io.kevinlee" %% "effectie-syntax"       % props.EffectieVersion
   lazy val effectieCe2    = "io.kevinlee" %% "effectie-cats-effect2" % props.EffectieVersion
   lazy val effectieCe3    = "io.kevinlee" %% "effectie-cats-effect3" % props.EffectieVersion
 
